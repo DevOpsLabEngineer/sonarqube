@@ -20,22 +20,10 @@
 import * as React from 'react';
 import { shallow } from 'enzyme';
 import HealthCard from '../HealthCard';
-import { click } from '../../../../../helpers/testUtils';
 import { HealthType } from '../../../../../api/system';
 
 it('should render correctly', () => {
-  expect(getShallowWrapper()).toMatchSnapshot();
-});
-
-it('should display the sysinfo detail', () => {
-  expect(getShallowWrapper({ biggerHealth: true, open: true })).toMatchSnapshot();
-});
-
-it('should show the sysinfo detail when the card is clicked', () => {
-  const onClick = jest.fn();
-  click(getShallowWrapper({ onClick }).find('.boxed-group-header'));
-  expect(onClick).toBeCalled();
-  expect(onClick).toBeCalledWith('Foobar');
+  expect(getWrapper()).toMatchSnapshot();
 });
 
 it('should show a main section and multiple sub sections', () => {
@@ -45,16 +33,18 @@ it('should show a main section and multiple sub sections', () => {
     Database: { db: 'test' },
     Elasticseach: { Elastic: 'search' }
   };
-  expect(getShallowWrapper({ open: true, sysInfoData })).toMatchSnapshot();
+  expect(getWrapper({ open: true, sysInfoData })).toMatchSnapshot();
 });
 
 it('should display the log level alert', () => {
   expect(
-    getShallowWrapper({ sysInfoData: { 'Logs Level': 'DEBUG' } }).find('.alert')
+    getWrapper({ sysInfoData: { 'Logs Level': 'DEBUG' } })
+      .dive()
+      .find('.alert')
   ).toMatchSnapshot();
 });
 
-function getShallowWrapper(props = {}) {
+function getWrapper(props = {}) {
   return shallow(
     <HealthCard
       biggerHealth={false}

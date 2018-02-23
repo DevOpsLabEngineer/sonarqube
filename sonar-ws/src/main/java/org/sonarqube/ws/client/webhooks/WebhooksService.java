@@ -19,15 +19,16 @@
  */
 package org.sonarqube.ws.client.webhooks;
 
-import java.util.stream.Collectors;
 import javax.annotation.Generated;
 import org.sonarqube.ws.MediaTypes;
+import org.sonarqube.ws.Webhooks.CreateWsResponse;
+import org.sonarqube.ws.Webhooks.DeliveriesWsResponse;
+import org.sonarqube.ws.Webhooks.DeliveryWsResponse;
+import org.sonarqube.ws.Webhooks.ListResponse;
 import org.sonarqube.ws.client.BaseService;
 import org.sonarqube.ws.client.GetRequest;
 import org.sonarqube.ws.client.PostRequest;
 import org.sonarqube.ws.client.WsConnector;
-import org.sonarqube.ws.Webhooks.DeliveriesWsResponse;
-import org.sonarqube.ws.Webhooks.DeliveryWsResponse;
 
 /**
  * @see <a href="https://next.sonarqube.com/sonarqube/web_api/api/webhooks">Further information about this web service online</a>
@@ -42,6 +43,38 @@ public class WebhooksService extends BaseService {
   /**
    *
    * This is part of the internal API.
+   * This is a POST request.
+   * @see <a href="https://next.sonarqube.com/sonarqube/web_api/api/webhooks/create">Further information about this action online (including a response example)</a>
+   * @since 7.1
+   */
+  public CreateWsResponse create(CreateRequest request) {
+    return call(
+      new PostRequest(path("create"))
+        .setParam("name", request.getName())
+        .setParam("organization", request.getOrganization())
+        .setParam("project", request.getProject())
+        .setParam("url", request.getUrl()),
+      CreateWsResponse.parser());
+  }
+
+  /**
+   *
+   * This is part of the internal API.
+   * This is a POST request.
+   * @see <a href="https://next.sonarqube.com/sonarqube/web_api/api/webhooks/delete">Further information about this action online (including a response example)</a>
+   * @since 7.1
+   */
+  public void delete(DeleteRequest request) {
+    call(
+      new PostRequest(path("delete"))
+        .setParam("webhook", request.getWebhook())
+        .setMediaType(MediaTypes.JSON)
+      ).content();
+  }
+
+  /**
+   *
+   * This is part of the internal API.
    * This is a GET request.
    * @see <a href="https://next.sonarqube.com/sonarqube/web_api/api/webhooks/deliveries">Further information about this action online (including a response example)</a>
    * @since 6.2
@@ -50,7 +83,10 @@ public class WebhooksService extends BaseService {
     return call(
       new GetRequest(path("deliveries"))
         .setParam("ceTaskId", request.getCeTaskId())
-        .setParam("componentKey", request.getComponentKey()),
+        .setParam("componentKey", request.getComponentKey())
+        .setParam("p", request.getP())
+        .setParam("ps", request.getPs())
+        .setParam("webhook", request.getWebhook()),
       DeliveriesWsResponse.parser());
   }
 
@@ -66,5 +102,37 @@ public class WebhooksService extends BaseService {
       new GetRequest(path("delivery"))
         .setParam("deliveryId", request.getDeliveryId()),
       DeliveryWsResponse.parser());
+  }
+
+  /**
+   *
+   * This is part of the internal API.
+   * This is a GET request.
+   * @see <a href="https://next.sonarqube.com/sonarqube/web_api/api/webhooks/list">Further information about this action online (including a response example)</a>
+   * @since 7.1
+   */
+  public ListResponse list(ListRequest request) {
+    return call(
+      new GetRequest(path("list"))
+        .setParam("organization", request.getOrganization())
+        .setParam("project", request.getProject()),
+      ListResponse.parser());
+  }
+
+  /**
+   *
+   * This is part of the internal API.
+   * This is a POST request.
+   * @see <a href="https://next.sonarqube.com/sonarqube/web_api/api/webhooks/update">Further information about this action online (including a response example)</a>
+   * @since 7.1
+   */
+  public void update(UpdateRequest request) {
+    call(
+      new PostRequest(path("update"))
+        .setParam("name", request.getName())
+        .setParam("url", request.getUrl())
+        .setParam("webhook", request.getWebhook())
+        .setMediaType(MediaTypes.JSON)
+      ).content();
   }
 }

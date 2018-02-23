@@ -25,7 +25,6 @@ import org.junit.rules.ExpectedException;
 import org.sonar.api.server.ws.WebService;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbTester;
-import org.sonar.db.component.ComponentDbTester;
 import org.sonar.db.component.ComponentDto;
 import org.sonar.db.organization.OrganizationDto;
 import org.sonar.db.user.UserDto;
@@ -37,13 +36,8 @@ import org.sonar.server.ws.WsActionTester;
 
 import static org.apache.http.HttpStatus.SC_NO_CONTENT;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.sonar.db.component.ComponentTesting.newPrivateProjectDto;
-import static org.sonar.server.user.ws.SetHomepageAction.PARAM_PARAMETER;
+import static org.sonar.server.user.ws.SetHomepageAction.PARAM_COMPONENT;
 import static org.sonar.server.user.ws.SetHomepageAction.PARAM_TYPE;
-import static org.sonarqube.ws.Users.CurrentWsResponse.HomepageType.MY_ISSUES;
-import static org.sonarqube.ws.Users.CurrentWsResponse.HomepageType.MY_PROJECTS;
-import static org.sonarqube.ws.Users.CurrentWsResponse.HomepageType.ORGANIZATION;
-import static org.sonarqube.ws.Users.CurrentWsResponse.HomepageType.PROJECT;
 
 public class SetHomepageActionTest {
 
@@ -57,8 +51,8 @@ public class SetHomepageActionTest {
   public ExpectedException expectedException = ExpectedException.none();
 
   private DbClient dbClient = db.getDbClient();
-  private SetHomepageAction underTest = new SetHomepageAction(userSession, dbClient, TestComponentFinder.from(db));
-  private WsActionTester ws = new WsActionTester(underTest);
+
+  private WsActionTester ws = new WsActionTester(new SetHomepageAction(userSession, dbClient, TestComponentFinder.from(db)));
 
   @Test
   public void verify_definition() {
@@ -69,47 +63,67 @@ public class SetHomepageActionTest {
     assertThat(action.since()).isEqualTo("7.0");
     assertThat(action.description()).isEqualTo("Set homepage of current user.<br> Requires authentication.");
     assertThat(action.responseExample()).isNull();
-    assertThat(action.deprecatedKey()).isNull();
-    assertThat(action.deprecatedSince()).isNull();
-    assertThat(action.handler()).isSameAs(underTest);
-    assertThat(action.params()).hasSize(2);
+    assertThat(action.params()).hasSize(4);
 
     WebService.Param typeParam = action.param("type");
     assertThat(typeParam.isRequired()).isTrue();
     assertThat(typeParam.description()).isEqualTo("Type of the requested page");
-    assertThat(typeParam.defaultValue()).isNull();
-    assertThat(typeParam.possibleValues()).containsExactlyInAnyOrder("PROJECT", "ORGANIZATION", "MY_PROJECTS", "MY_ISSUES");
-    assertThat(typeParam.deprecatedSince()).isNull();
-    assertThat(typeParam.deprecatedKey()).isNull();
 
-    WebService.Param keyParam = action.param("parameter");
-    assertThat(keyParam.isRequired()).isFalse();
-    assertThat(keyParam.description()).isEqualTo("Additional information to identify the page (project or organization key)");
-    assertThat(keyParam.exampleValue()).isEqualTo("my_project");
-    assertThat(keyParam.defaultValue()).isNull();
-    assertThat(keyParam.deprecatedSince()).isNull();
-    assertThat(keyParam.deprecatedKey()).isNull();
+    WebService.Param componentParam = action.param("component");
+    assertThat(componentParam.isRequired()).isFalse();
+    assertThat(componentParam.description()).isEqualTo("Project key. It should only be used when parameter 'type' is set to 'PROJECT'");
+    assertThat(componentParam.since()).isEqualTo("7.1");
+
+    WebService.Param branchParam = action.param("branch");
+    assertThat(branchParam.isRequired()).isFalse();
+    assertThat(branchParam.description()).isEqualTo("Branch key. It can only be used when parameter 'type' is set to 'PROJECT'");
+    assertThat(branchParam.since()).isEqualTo("7.1");
+
+    WebService.Param organizationParam = action.param("organization");
+    assertThat(organizationParam.isRequired()).isFalse();
+    assertThat(organizationParam.description()).isEqualTo("Organization key. It should only be used when parameter 'type' is set to 'ORGANIZATION'");
+    assertThat(organizationParam.since()).isEqualTo("7.1");
   }
-
 
   @Test
   public void set_project_homepage() {
     OrganizationDto organization = db.organizations().insert();
-    ComponentDto project = new ComponentDbTester(db).insertComponent(newPrivateProjectDto(organization));
+    ComponentDto project = db.components().insertPrivateProject(organization);
 
     UserDto user = db.users().insertUser();
     userSession.logIn(user);
 
     ws.newRequest()
       .setMethod("POST")
-      .setParam(PARAM_TYPE, PROJECT.toString())
-      .setParam(PARAM_PARAMETER, project.getKey())
+      .setParam(PARAM_TYPE, "PROJECT")
+      .setParam("component", project.getKey())
       .execute();
 
     UserDto actual = db.getDbClient().userDao().selectByLogin(db.getSession(), user.getLogin());
     assertThat(actual).isNotNull();
-    assertThat(actual.getHomepageType()).isEqualTo(PROJECT.toString());
+    assertThat(actual.getHomepageType()).isEqualTo("PROJECT");
     assertThat(actual.getHomepageParameter()).isEqualTo(project.uuid());
+  }
+
+  @Test
+  public void set_branch_homepage() {
+    OrganizationDto organization = db.organizations().insert();
+    ComponentDto project = db.components().insertMainBranch(organization);
+    ComponentDto branch = db.components().insertProjectBranch(project);
+    UserDto user = db.users().insertUser();
+    userSession.logIn(user);
+
+    ws.newRequest()
+      .setMethod("POST")
+      .setParam(PARAM_TYPE, "PROJECT")
+      .setParam("component", branch.getKey())
+      .setParam("branch", branch.getBranch())
+      .execute();
+
+    UserDto actual = db.getDbClient().userDao().selectByLogin(db.getSession(), user.getLogin());
+    assertThat(actual).isNotNull();
+    assertThat(actual.getHomepageType()).isEqualTo("PROJECT");
+    assertThat(actual.getHomepageParameter()).isEqualTo(branch.uuid());
   }
 
   @Test
@@ -121,46 +135,133 @@ public class SetHomepageActionTest {
 
     ws.newRequest()
       .setMethod("POST")
-      .setParam(PARAM_TYPE, ORGANIZATION.toString())
-      .setParam(PARAM_PARAMETER, organization.getKey())
+      .setParam(PARAM_TYPE, "ORGANIZATION")
+      .setParam("organization", organization.getKey())
       .execute();
 
     UserDto actual = db.getDbClient().userDao().selectByLogin(db.getSession(), user.getLogin());
     assertThat(actual).isNotNull();
-    assertThat(actual.getHomepageType()).isEqualTo(ORGANIZATION.toString());
+    assertThat(actual.getHomepageType()).isEqualTo("ORGANIZATION");
     assertThat(actual.getHomepageParameter()).isEqualTo(organization.getUuid());
   }
 
   @Test
-  public void set_my_issues_homepage() {
+  public void set_SonarCloud_my_issues_homepage() {
     UserDto user = db.users().insertUser();
     userSession.logIn(user);
 
     ws.newRequest()
       .setMethod("POST")
-      .setParam(PARAM_TYPE, MY_ISSUES.toString())
+      .setParam(PARAM_TYPE, "MY_ISSUES")
       .execute();
 
     UserDto actual = db.getDbClient().userDao().selectByLogin(db.getSession(), user.getLogin());
     assertThat(actual).isNotNull();
-    assertThat(actual.getHomepageType()).isEqualTo(MY_ISSUES.toString());
+    assertThat(actual.getHomepageType()).isEqualTo("MY_ISSUES");
     assertThat(actual.getHomepageParameter()).isNullOrEmpty();
   }
 
   @Test
-  public void set_my_projects_homepage() {
+  public void set_SonarQube_issues_homepage() {
+
     UserDto user = db.users().insertUser();
     userSession.logIn(user);
 
     ws.newRequest()
       .setMethod("POST")
-      .setParam(PARAM_TYPE, MY_PROJECTS.toString())
+      .setParam(PARAM_TYPE, "ISSUES")
       .execute();
 
     UserDto actual = db.getDbClient().userDao().selectByLogin(db.getSession(), user.getLogin());
     assertThat(actual).isNotNull();
-    assertThat(actual.getHomepageType()).isEqualTo(MY_PROJECTS.toString());
+    assertThat(actual.getHomepageType()).isEqualTo("ISSUES");
     assertThat(actual.getHomepageParameter()).isNullOrEmpty();
+  }
+
+  @Test
+  public void set_SonarCloud_my_projects_homepage() {
+    UserDto user = db.users().insertUser();
+    userSession.logIn(user);
+
+    ws.newRequest()
+      .setMethod("POST")
+      .setParam(PARAM_TYPE, "MY_PROJECTS")
+      .execute();
+
+    UserDto actual = db.getDbClient().userDao().selectByLogin(db.getSession(), user.getLogin());
+    assertThat(actual).isNotNull();
+    assertThat(actual.getHomepageType()).isEqualTo("MY_PROJECTS");
+    assertThat(actual.getHomepageParameter()).isNullOrEmpty();
+  }
+
+  @Test
+  public void set_SonarQube_projects_homepage() {
+    UserDto user = db.users().insertUser();
+    userSession.logIn(user);
+
+    ws.newRequest()
+      .setMethod("POST")
+      .setParam(PARAM_TYPE, "PROJECTS")
+      .execute();
+
+    UserDto actual = db.getDbClient().userDao().selectByLogin(db.getSession(), user.getLogin());
+    assertThat(actual).isNotNull();
+    assertThat(actual.getHomepageType()).isEqualTo("PROJECTS");
+    assertThat(actual.getHomepageParameter()).isNullOrEmpty();
+  }
+
+  @Test
+  public void set_portfolios_homepage() {
+    UserDto user = db.users().insertUser();
+    userSession.logIn(user);
+
+    ws.newRequest()
+      .setMethod("POST")
+      .setParam(PARAM_TYPE, "PORTFOLIOS")
+      .execute();
+
+    UserDto actual = db.getDbClient().userDao().selectByLogin(db.getSession(), user.getLogin());
+    assertThat(actual).isNotNull();
+    assertThat(actual.getHomepageType()).isEqualTo("PORTFOLIOS");
+    assertThat(actual.getHomepageParameter()).isNullOrEmpty();
+  }
+
+  @Test
+  public void set_portfolio_homepage() {
+    OrganizationDto organization = db.organizations().insert();
+    ComponentDto portfolio = db.components().insertPrivatePortfolio(organization);
+    UserDto user = db.users().insertUser();
+    userSession.logIn(user);
+
+    ws.newRequest()
+      .setMethod("POST")
+      .setParam(PARAM_TYPE, "PORTFOLIO")
+      .setParam(PARAM_COMPONENT, portfolio.getKey())
+      .execute();
+
+    UserDto actual = db.getDbClient().userDao().selectByLogin(db.getSession(), user.getLogin());
+    assertThat(actual).isNotNull();
+    assertThat(actual.getHomepageType()).isEqualTo("PORTFOLIO");
+    assertThat(actual.getHomepageParameter()).isEqualTo(portfolio.uuid());
+  }
+
+  @Test
+  public void set_application_homepage() {
+    OrganizationDto organization = db.organizations().insert();
+    ComponentDto application = db.components().insertPrivateApplication(organization);
+    UserDto user = db.users().insertUser();
+    userSession.logIn(user);
+
+    ws.newRequest()
+      .setMethod("POST")
+      .setParam(PARAM_TYPE, "APPLICATION")
+      .setParam(PARAM_COMPONENT, application.getKey())
+      .execute();
+
+    UserDto actual = db.getDbClient().userDao().selectByLogin(db.getSession(), user.getLogin());
+    assertThat(actual).isNotNull();
+    assertThat(actual.getHomepageType()).isEqualTo("APPLICATION");
+    assertThat(actual.getHomepageParameter()).isEqualTo(application.uuid());
   }
 
   @Test
@@ -170,7 +271,7 @@ public class SetHomepageActionTest {
 
     TestResponse response = ws.newRequest()
       .setMethod("POST")
-      .setParam(PARAM_TYPE, MY_PROJECTS.toString())
+      .setParam(PARAM_TYPE, "MY_PROJECTS")
       .execute();
 
     assertThat(response.getStatus()).isEqualTo(SC_NO_CONTENT);
@@ -178,42 +279,53 @@ public class SetHomepageActionTest {
   }
 
   @Test
-  public void fail_when_missing_project_id_when_requesting_project_type() {
+  public void fail_when_missing_project_key_when_requesting_project_type() {
+    UserDto user = db.users().insertUser();
+    userSession.logIn(user);
 
     expectedException.expect(IllegalArgumentException.class);
     expectedException.expectMessage("Type PROJECT requires a parameter");
 
-    UserDto user = db.users().insertUser();
-    userSession.logIn(user);
-
     ws.newRequest()
       .setMethod("POST")
-      .setParam(PARAM_TYPE, PROJECT.toString())
-      .setParam(PARAM_PARAMETER, "")
+      .setParam(PARAM_TYPE, "PROJECT")
       .execute();
 
   }
 
   @Test
   public void fail_when_missing_organization_id_when_requesting_organization_type() {
+    UserDto user = db.users().insertUser();
+    userSession.logIn(user);
 
     expectedException.expect(IllegalArgumentException.class);
     expectedException.expectMessage("Type ORGANIZATION requires a parameter");
 
+    ws.newRequest()
+      .setMethod("POST")
+      .setParam(PARAM_TYPE, "ORGANIZATION")
+      .execute();
+  }
+
+  @Test
+  public void fail_when_invalid_homepage_type() {
     UserDto user = db.users().insertUser();
     userSession.logIn(user);
 
+    expectedException.expect(IllegalArgumentException.class);
+    expectedException
+      .expectMessage("Value of parameter 'type' (PIPO) must be one of: [PROJECT, PROJECTS, ISSUES, PORTFOLIOS, PORTFOLIO, APPLICATION, MY_PROJECTS, MY_ISSUES, ORGANIZATION]");
+
     ws.newRequest()
       .setMethod("POST")
-      .setParam(PARAM_TYPE, ORGANIZATION.toString())
-      .setParam(PARAM_PARAMETER, "")
+      .setParam(PARAM_TYPE, "PIPO")
       .execute();
-
   }
 
   @Test
   public void fail_for_anonymous() {
     userSession.anonymous();
+
     expectedException.expect(UnauthorizedException.class);
     expectedException.expectMessage("Authentication is required");
 

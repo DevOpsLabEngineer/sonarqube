@@ -20,9 +20,14 @@
 package org.sonar.db.webhook;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import org.apache.ibatis.session.RowBounds;
 import org.sonar.db.Dao;
 import org.sonar.db.DbSession;
+
+import static java.util.function.Function.identity;
+import static java.util.stream.Collectors.toMap;
 
 public class WebhookDeliveryDao implements Dao {
 
@@ -30,18 +35,37 @@ public class WebhookDeliveryDao implements Dao {
     return Optional.ofNullable(mapper(dbSession).selectByUuid(uuid));
   }
 
+  public int countDeliveriesByWebhookUuid(DbSession dbSession, String webhookUuid) {
+    return mapper(dbSession).countByWebhookUuid(webhookUuid);
+  }
+
+  /**
+   * All the deliveries for the specified webhook. Results are ordered by descending date.
+   */
+  public List<WebhookDeliveryLiteDto> selectByWebhookUuid(DbSession dbSession, String webhookUuid, int offset, int limit) {
+    return mapper(dbSession).selectByWebhookUuid(webhookUuid, new RowBounds(offset, limit));
+  }
+
+  public int countDeliveriesByComponentUuid(DbSession dbSession, String componentUuid) {
+    return mapper(dbSession).countByComponentUuid(componentUuid);
+  }
+
   /**
    * All the deliveries for the specified component. Results are ordered by descending date.
    */
-  public List<WebhookDeliveryLiteDto> selectOrderedByComponentUuid(DbSession dbSession, String componentUuid) {
-    return mapper(dbSession).selectOrderedByComponentUuid(componentUuid);
+  public List<WebhookDeliveryLiteDto> selectOrderedByComponentUuid(DbSession dbSession, String componentUuid, int offset, int limit) {
+    return mapper(dbSession).selectOrderedByComponentUuid(componentUuid, new RowBounds(offset, limit));
+  }
+
+  public int countDeliveriesByCeTaskUuid(DbSession dbSession, String ceTaskId) {
+    return mapper(dbSession).countByCeTaskUuid(ceTaskId);
   }
 
   /**
    * All the deliveries for the specified CE task. Results are ordered by descending date.
    */
-  public List<WebhookDeliveryLiteDto> selectOrderedByCeTaskUuid(DbSession dbSession, String ceTaskUuid) {
-    return mapper(dbSession).selectOrderedByCeTaskUuid(ceTaskUuid);
+  public List<WebhookDeliveryLiteDto> selectOrderedByCeTaskUuid(DbSession dbSession, String ceTaskUuid, int offset, int limit) {
+    return mapper(dbSession).selectOrderedByCeTaskUuid(ceTaskUuid, new RowBounds(offset, limit));
   }
 
   public void insert(DbSession dbSession, WebhookDeliveryDto dto) {
@@ -50,6 +74,12 @@ public class WebhookDeliveryDao implements Dao {
 
   public void deleteComponentBeforeDate(DbSession dbSession, String componentUuid, long beforeDate) {
     mapper(dbSession).deleteComponentBeforeDate(componentUuid, beforeDate);
+  }
+
+  public Map<String, WebhookDeliveryLiteDto> selectLatestDeliveries(DbSession dbSession, List<WebhookDto> webhooks) {
+    return webhooks.stream()
+      .flatMap(webhook -> selectByWebhookUuid(dbSession, webhook.getUuid(),0,1).stream())
+      .collect(toMap(WebhookDeliveryLiteDto::getWebhookUuid, identity()));
   }
 
   private static WebhookDeliveryMapper mapper(DbSession dbSession) {

@@ -28,12 +28,13 @@ import org.sonar.core.util.UuidFactory;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.DbTester;
+import org.sonar.db.webhook.WebhookDbTesting;
 import org.sonar.db.webhook.WebhookDeliveryDto;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.sonar.db.webhook.WebhookDbTesting.newWebhookDeliveryDto;
+import static org.sonar.db.webhook.WebhookDbTesting.newDto;
 import static org.sonar.db.webhook.WebhookDbTesting.selectAllDeliveryUuids;
 
 public class WebhookDeliveryStorageTest {
@@ -62,6 +63,7 @@ public class WebhookDeliveryStorageTest {
 
     WebhookDeliveryDto dto = dbClient.webhookDeliveryDao().selectByUuid(dbSession, DELIVERY_UUID).get();
     assertThat(dto.getUuid()).isEqualTo(DELIVERY_UUID);
+    assertThat(dto.getWebhookUuid()).isEqualTo("WEBHOOK_UUID_1");
     assertThat(dto.getComponentUuid()).isEqualTo(delivery.getWebhook().getComponentUuid());
     assertThat(dto.getCeTaskUuid()).isEqualTo(delivery.getWebhook().getCeTaskUuid().get());
     assertThat(dto.getName()).isEqualTo(delivery.getWebhook().getName());
@@ -102,7 +104,7 @@ public class WebhookDeliveryStorageTest {
 
   private static WebhookDelivery.Builder newBuilderTemplate() {
     return new WebhookDelivery.Builder()
-      .setWebhook(new Webhook("COMPONENT1", "TASK1", RandomStringUtils.randomAlphanumeric(40),"Jenkins", "http://jenkins"))
+      .setWebhook(new Webhook("WEBHOOK_UUID_1", "COMPONENT1", "TASK1", RandomStringUtils.randomAlphanumeric(40),"Jenkins", "http://jenkins"))
       .setPayload(new WebhookPayload("my-project", "{json}"))
       .setAt(1_000_000L)
       .setHttpStatus(200)
@@ -110,7 +112,7 @@ public class WebhookDeliveryStorageTest {
   }
 
   private static WebhookDeliveryDto newDto(String uuid, String componentUuid, long at) {
-    return newWebhookDeliveryDto()
+    return WebhookDbTesting.newDto()
       .setUuid(uuid)
       .setComponentUuid(componentUuid)
       .setCreatedAt(at);

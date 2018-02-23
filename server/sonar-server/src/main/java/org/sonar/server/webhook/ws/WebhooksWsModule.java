@@ -25,7 +25,12 @@ public class WebhooksWsModule extends Module {
   @Override
   protected void configureModule() {
     add(
+      WebhookSupport.class,
       WebhooksWs.class,
+      ListAction.class,
+      CreateAction.class,
+      UpdateAction.class,
+      DeleteAction.class,
       WebhookDeliveryAction.class,
       WebhookDeliveriesAction.class);
   }

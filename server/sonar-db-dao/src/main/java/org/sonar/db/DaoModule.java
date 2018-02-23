@@ -74,6 +74,7 @@ import org.sonar.db.user.RoleDao;
 import org.sonar.db.user.UserDao;
 import org.sonar.db.user.UserGroupDao;
 import org.sonar.db.user.UserTokenDao;
+import org.sonar.db.webhook.WebhookDao;
 import org.sonar.db.webhook.WebhookDeliveryDao;
 
 public class DaoModule extends Module {
@@ -92,8 +93,6 @@ public class DaoModule extends Module {
     CeTaskInputDao.class,
     ComponentDao.class,
     ComponentKeyUpdaterDao.class,
-    ProjectLinkDao.class,
-    LiveMeasureDao.class,
     CustomMeasureDao.class,
     DefaultQProfileDao.class,
     DuplicationDao.class,
@@ -106,6 +105,7 @@ public class DaoModule extends Module {
     InternalPropertiesDao.class,
     IssueChangeDao.class,
     IssueDao.class,
+    LiveMeasureDao.class,
     MeasureDao.class,
     MetricDao.class,
     NotificationQueueDao.class,
@@ -114,6 +114,7 @@ public class DaoModule extends Module {
     PermissionTemplateCharacteristicDao.class,
     PermissionTemplateDao.class,
     PluginDao.class,
+    ProjectLinkDao.class,
     ProjectQgateAssociationDao.class,
     PropertiesDao.class,
     PurgeDao.class,
@@ -132,6 +133,7 @@ public class DaoModule extends Module {
     UserGroupDao.class,
     UserPermissionDao.class,
     UserTokenDao.class,
+    WebhookDao.class,
     WebhookDeliveryDao.class));
 
   @Override

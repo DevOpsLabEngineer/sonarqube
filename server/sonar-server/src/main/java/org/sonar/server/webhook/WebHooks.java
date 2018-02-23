@@ -24,24 +24,26 @@ import java.util.function.Supplier;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.sonar.api.config.Configuration;
+import org.sonar.db.component.ComponentDto;
 
 import static java.util.Objects.requireNonNull;
 
 public interface WebHooks {
+
   /**
-   * Tells whether any webHook is configured at all for the specified {@link Configuration}.
+   * Tells whether any webHook is configured for the specified {@link Configuration}.
    *
    * <p>
    * This can be used to not do consuming operations before calling
-   * {@link #sendProjectAnalysisUpdate(Configuration, Analysis, Supplier)}
+   * {@link #sendProjectAnalysisUpdate(Analysis, Supplier)}
    */
-  boolean isEnabled(Configuration configuration);
+  boolean isEnabled(ComponentDto projectDto);
 
   /**
    * Calls all WebHooks configured in the specified {@link Configuration} for the specified analysis with the
    * {@link WebhookPayload} provided by the specified Supplier.
    */
-  void sendProjectAnalysisUpdate(Configuration configuration, Analysis analysis, Supplier<WebhookPayload> payloadSupplier);
+  void sendProjectAnalysisUpdate(Analysis analysis, Supplier<WebhookPayload> payloadSupplier);
 
   final class Analysis {
     private final String projectUuid;

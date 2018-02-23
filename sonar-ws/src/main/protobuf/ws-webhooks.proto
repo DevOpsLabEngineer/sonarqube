@@ -20,13 +20,49 @@ syntax = "proto2";
 
 package sonarqube.ws.webhooks;
 
+import "ws-commons.proto";
+
 option java_package = "org.sonarqube.ws";
 option java_outer_classname = "Webhooks";
 option optimize_for = SPEED;
 
+message LatestDelivery {
+  optional string id = 1;
+  optional string at = 2;
+  optional bool success = 3;
+  optional int32 httpStatus = 4;
+  optional int32 durationMs = 5;
+}
+
+message ListResponseElement {
+  optional string key = 1;
+  optional string name = 2;
+  optional string url = 3;
+  optional LatestDelivery latestDelivery = 4;
+}
+
+// GET api/webhooks/list
+message ListResponse {
+  repeated ListResponseElement webhooks = 1;
+}
+
+// POST api/webhooks/create
+message CreateWsResponse {
+  optional Webhook webhook = 1;
+
+  message Webhook {
+    optional string key = 1;
+    optional string name = 2;
+    optional string url = 3;
+  }
+}
+
 // WS api/webhooks/deliveries
 message DeliveriesWsResponse {
-  repeated Delivery deliveries = 1;
+
+  optional sonarqube.ws.commons.Paging paging = 1;
+
+  repeated Delivery deliveries = 2;
 }
 
 // WS api/webhooks/delivery

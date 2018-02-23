@@ -40,6 +40,9 @@ public class DbVersion71 implements DbVersion {
       .add(2010, "Populate table PROJECT_LINKS2", PopulateTableProjectLinks2.class)
       .add(2011, "Drop table PROJECT_LINKS", DropTableProjectLinks.class)
       .add(2012, "Rename table PROJECT_LINKS2 to PROJECT_LINKS", RenameTableProjectLinks2ToProjectLinks.class)
+      .add(2013, "Create WEBHOOKS Table", CreateWebhooksTable.class)
+      .add(2014, "Migrate webhooks from SETTINGS table to WEBHOOKS table", MigrateWebhooksToWebhooksTable.class)
+      .add(2015, "Add webhook key to WEBHOOK_DELIVERIES table", AddWebhookKeyToWebhookDeliveriesTable.class)
     ;
   }
 }

@@ -48,6 +48,10 @@ export function getProjectUrl(key: string, branch?: string): Location {
   return { pathname: '/dashboard', query: { id: key, branch } };
 }
 
+export function getPortfolioUrl(key: string): Location {
+  return { pathname: '/portfolio', query: { id: key } };
+}
+
 export function getComponentBackgroundTaskUrl(componentKey: string, status?: string): Location {
   return { pathname: '/project/background_tasks', query: { id: componentKey, status } };
 }
@@ -178,16 +182,37 @@ export function getOrganizationUrl(organization: string) {
 
 export function getHomePageUrl(homepage: HomePage) {
   switch (homepage.type) {
+    case HomePageType.Application:
+      return getProjectUrl(homepage.component);
     case HomePageType.Project:
-      return getProjectUrl(homepage.parameter!);
+      return getProjectUrl(homepage.component, homepage.branch);
     case HomePageType.Organization:
-      return getOrganizationUrl(homepage.parameter!);
+      return getOrganizationUrl(homepage.organization);
+    case HomePageType.Portfolio:
+      return getPortfolioUrl(homepage.component);
+    case HomePageType.Portfolios:
+      return '/portfolios';
     case HomePageType.MyProjects:
       return '/projects';
+    case HomePageType.Issues:
     case HomePageType.MyIssues:
       return { pathname: '/issues', query: { resolved: 'false' } };
   }
 
   // should never happen, but just in case...
   return '/projects';
+}
+
+export function isUrl(url: string) {
+  if (!URL) {
+    const elem = document.createElement('a');
+    elem.href = url;
+    return !!(elem.host && elem.hostname && elem.protocol);
+  }
+  try {
+    const parsedUrl = new URL(url);
+    return url.includes(parsedUrl.host);
+  } catch (error) {
+    return false;
+  }
 }

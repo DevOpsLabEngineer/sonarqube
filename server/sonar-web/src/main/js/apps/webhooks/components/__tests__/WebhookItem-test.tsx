@@ -18,17 +18,23 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 import * as React from 'react';
-import ClipboardButton from '../../../components/controls/ClipboardButton';
+import { shallow } from 'enzyme';
+import WebhookItem from '../WebhookItem';
 
-interface Props {
-  snippet: string;
-}
+const webhook = {
+  key: '1',
+  name: 'my webhook',
+  url: 'http://webhook.target'
+};
 
-export default function BadgeSnippet({ snippet }: Props) {
-  return (
-    <div className="badge-snippet">
-      <pre>{snippet}</pre>
-      <ClipboardButton copyValue={snippet} tooltipPlacement="top" />
-    </div>
-  );
-}
+it('should render correctly', () => {
+  expect(
+    shallow(
+      <WebhookItem
+        onDelete={jest.fn(() => Promise.resolve())}
+        onUpdate={jest.fn(() => Promise.resolve())}
+        webhook={webhook}
+      />
+    )
+  ).toMatchSnapshot();
+});
